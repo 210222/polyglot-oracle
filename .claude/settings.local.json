@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "Bash(python:*)",
+      "Bash(find D:/Claudedaoy/DMyProject/AI_Editor_System/legacy_backup -name *.py)",
+      "Bash(grep -n \"synthesize_context\\\\|IntelligentRAG\\\\|collection.query\\\\|encode\" D:/Claudedaoy/DMyProject/AI_Editor_System/legacy_backup/*.py)",
+      "Bash(dir D:ClaudedaoyDMyProjectAI_Editor_System /b /a-d)",
+      "Bash(findstr -i \".txt .md .pdf .doc\")",
+      "Bash(dir D:ClaudedaoyDMyProjectAI_Editor_System /b /ad)",
+      "Bash(dir D:ClaudedaoyDMyProjectAI_Editor_Systemdata /b /s)",
+      "Bash(dir \"D:\\\\Claudedaoy\\\\DMyProject\\\\AI_Editor_System\\\\Knowledge_Base\" /b /s)",
+      "Bash(dir \"D:\\\\Claudedaoy\\\\DMyProject\\\\AI_Editor_System\\\\pdf\" /b /s)",
+      "Bash(dir \"D:\\\\Claudedaoy\\\\DMyProject\\\\AI_Editor_System\\\\Knowledge_Base\" /b /s /a-d)",
+      "Bash(dir \"D:\\\\Claudedaoy\\\\DMyProject\\\\AI_Editor_System\\\\pdf\" /b /s /a-d)",
+      "Read(//d D:/Claudedaoy/DMyProject/**)",
+      "Bash(python -c \"print\\(open\\(''_db_result.txt'',encoding=''utf-8''\\).read\\(\\)\\)\")",
+      "Bash(python -c \"print\\(open\\(''D:/Claudedaoy/DMyProject/AI_Editor_System/_db_result.txt'',encoding=''utf-8''\\).read\\(\\)\\)\")",
+      "Bash(dir \"D:\\\\Claudedaoy\\\\DMyProject\\\\AI_Editor_System\\\\Knowledge_Base\" /B)",
+      "Bash(\"D:/Claudedaoy/AI_Editor_System/venv/Scripts/python.exe\" -c \"import torch; print\\(''venv torch ok:'', torch.__version__\\)\")",
+      "Bash(\"D:/Claudedaoy/AI_Editor_System/venv/Scripts/python.exe\" -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(ls:*)",
+      "Bash(C:/python310/python.exe -c \"import sys; print\\(sys.version\\); import chromadb; print\\('chromadb ok'\\)\" 2>&1)",
+      "Bash(C:/python310/python.exe -c \"from sentence_transformers import SentenceTransformer; print\\('sentence_transformers ok'\\)\" 2>&1)",
+      "Bash(del \"D:\\\\Claudedaoy\\\\DMyProject\\\\自我成长轨阅读手册.md\")",
+      "Bash(del \"D:\\\\Claudedaoy\\\\DMyProject\\\\完整阅读线路图.md\")",
+      "Bash(mkdir -p archive)",
+      "Bash(mv check_db.py check_db_health.py check_ocr.py check_poppler.py inspect_chroma_books.py _scan_db.py clean_garbage.py debug_scanner.py arch_enforcer.py train_script_auditor.py ocr_pdf_to_pdf.py textpdf.py tools_split_pdf.py test_db_compare.py test_db_integrity.py test_db_probe.py archive/)",
+      "Bash(cd:*)"
+    ]
+  }
+}

@@ -1,0 +1,144 @@
+架构重构规范：将双轨扫描文档智能整合进流程ingest_pro_books1. 执行摘要与战略任务企业知识管理系统的演变需要从纯数字文本处理向通用文档理解的转变。本报告详细介绍了系统的架构重构（特别是版本v9.9.6，即“活跃黑名单”版），以整合扫描PDF数据处理与存储研究中提出的先进“双轨内容提取与增强架构”。ingest_pro_books.py其主要目标是将现有的采集流程——目前通过PyMuPDF优化为数字文本文档——发展成一个混合型“通用文档处理器”。该重建解决了关键的“数据静默”现象，即高价值扫描资产（合同、历史手稿、工程图纸）由于遗留系统缺乏光学字符识别（OCR）能力，向量嵌入为零。关键是，这种重构受严格的不变性约束约束：系统必须保持与现有ai_editor_chroma_db_v9数据库模式的100%向后兼容，保留复杂的“主动黑名单”和“数据库净化”防御机制，并维护将专家知识领域分隔的文件路由逻辑。该方案引入了“内容保真度路由器”，能够无缝分支基于文档密度的处理逻辑，实现传统PyMuPDF轨道和新的双轨计算机视觉（CV）流水线的并行运行，且结构性不变。2. 遗留系统审计：v9.9.6ingest_pro_books在开始架构集成之前，必须对现有系统进行严格审计，以识别功能不变——即应用程序中必须保持不变以保持原有功能的“承重墙”。ingest_pro_books.py2.1 防御性摄入哲学v9.9.6 脚本不仅仅是解析器;它是一种防御系统，设计用于在不稳定环境中运作。它实现了一个“防崩溃”摄取环路，其特征是三层不同的保护层，必须在重构时保持这些保护层：主动黑名单（“熔断”机制）：系统维护一个硬编码的BLACKLIST_FILES数组，包含已知会导致嵌入模型或解析器灾难性故障的特定文件名（例如Virtual Production Field Guide Volume 2 v1.0-5b06b62cbc5f.pdf）。该机构起到预检断路器的作用。任何重构都必须在尝试任何文件I/O（包括新的扫描PDF检测程序）前检查该黑名单。数据库净化与恢复：KnowledgeIngester 类实现了一个_check_and_sanitize_db方法，用于检查 ChromaDB 持久化文件的 SQLite 头部。检测到损坏后，会触发_nuke_folder策略，有效地将数据库重置为清洁状态。这种低级别的文件系统干预对于自主恢复至关重要，必须始终是运行执行流程的第一步。通过备份实现会话隔离：为防止文件损坏导致数据污染，perform_backup方法在处理前在专用的知识块备份防污染（知识块备份防污染）目录中创建带有时间戳的文件副本。新的流程必须确保扫描后的PDF在光栅化和图像增强等破坏性作之前得到备份。2.2 语义路由架构核心功能需求之一是保持域分离逻辑。该方法根据文件名关键词将文档路由到特定的 ChromaDB 集合中。该逻辑在向量数据库中创建了分类结构：get_routing_category收藏名称触发关键词内容领域screenplay_expert'编剧'（剧本）、'故事'（故事）、'编剧'、'剧本'叙事结构与创意写作规则director_expert'导演'（Director）'，'视觉'（Visual），'UE5'，'camera'视觉工程、摄影、虚拟制作shared_common“法规”（法律）、“指南”、“标准”（标准）监管和常识的备选建筑学意义：新的扫描处理模块必须返回与该路由兼容的数据。如果扫描的 PDF 文件名中包含“UE5”关键字，其从 VLM 提取的内容必须路由到 director_expert，以保持知识库的语义完整性。2.3 差距分析：“不安全”的解析当前的process_file方法依赖于_unsafe_parse_pdf，利用fitz（PyMuPDF）通过page.get_text（）提取文本。限制：该方法仅在文本层上工作。对于光栅化文档（图像保存为 PDF），返回的是空字符串或垃圾字符。当前系统在这些情景下默默失效，造成“知识漏洞”。get_text()The Invariant: The term "Unsafe" in the method name refers to the potential for C-level crashes in fitz when handling malformed PDFs. The existing try...finally block with explicit garbage collection (gc.collect()) is a stability patch that must be replicated or wrapped in the new implementation to prevent memory leaks during the processing of thousands of files.3. Theoretical Architecture: The Dual-Track ProtocolTo address the limitations of the legacy system while adhering to the user's constraints, we introduce the Dual-Track Content Extraction & Enhancement Architecture. This methodology, derived from the Scanned PDF Data Processing & Storage research, fundamentally shifts the processing paradigm from "Text Reading" to "Visual Decoding".3.1 The Double-Helix Processing Model传统OCR将文档视为线性字符流。双轨架构将文档视为“可视化知识图谱”，将布局结构与语义意义分离。A轨道：结构骨架（PaddleOCR）该轨道使用了PaddleOCR的PP-Structure模块（基于PicoDet）。其主要作用不仅是阅读文本，还包括理解页面的几何结构。它将页面区域分类为离散类型：正文：标准段落要求高精度OCR。标题：用于元数据分割的层级标记。页眉/页脚：必须通过手术去除噪声元素，以防止RAG系统中的上下文污染。图表/表格：复杂的视觉元素，传统OCR会将其扭曲成无法理解的字符流。轨道B：语义灵魂（视觉语言模型）该轨道针对“多模态信息黑洞”。当轨道A识别A或时，将坐标有效载荷交给轨道B。使用视觉语言模型（VLM），如GPT-4o视觉，轨道B生成视觉元素的语义描述。FigureTable对于表格：VLM 将行/列结构重建为 Markdown。图表方面：VLM提取数据趋势（例如，“第三季度收入增长15%”），这些趋势在视觉上存在但文本中缺失。3.2 融合点：“富文本”流Track A（清理后的文本）和Track B（语义描述）的输出在数据融合层中汇聚。在这里，文档被重建为一个顺序的“富文本”块流。该流使下游的 KnowledgeIngester 能够将已扫描的 PDF 完全视为数字文本文件，满足“生成数据库文件不变”的要求。4. 计算机视觉预处理流程从扫描文档中获得的矢量嵌入质量严格依赖于输入图像的质量。该集成要求一个强大的“图像预处理与增强”模块，以便在扫描数据进入OCR引擎前对其混乱性进行规范化。4.1 高保真光栅化策略扫描流程的第一步是将 PDF 页面转换为可作的图像。研究要求使用（包裹 Poppler）以特定配置来平衡画质和内存使用。pdf2imageDPI 选择：标准文本的基础分辨率为 300 DPI，确保字符笔画在 OCR 引擎卷积网络中足够区分。对于包含细则或手写的文档，架构支持扩展至 400-600 DPI。生成器模式：为了防止处理大型手册时出现内存不足（OOM）错误（在“专家”领域中常见），光栅化必须使用 Python 生成器（）。这确保了任何时刻只有一个页面的位图存储在内存中，避免了加载整个 PDF 到内存时出现的巨大内存峰值。yield4.2 几何修正（Deskewing）扫描后的文档不可避免地会出现“偏斜”——由机械扫描器信号引起的旋转错位。即使是偏差$\pm 1^\circ$OCR中的线段算法可能导致文本行被切断，导致乱码。该架构拒绝了计算成本高的霍夫变换，转而采用使用OpenCV的最小面积矩形方法：Binarization & Dilation: The image is converted to a binary map, and a horizontal dilation kernel ($30 \times 5$) is applied. This fuses individual characters into solid "text blocks."Contour Analysis:  identifies these blocks, and  calculates the angle of the rectangle that encloses the largest text block.cv2.findContourscv2.minAreaRectAffine Transformation: A rotation matrix is calculated, and  corrects the image. Crucially, the border mode  is used to fill the triangular voids created by rotation with edge pixels, preventing the introduction of high-contrast black borders that could trigger false positives in layout analysis.cv2.warpAffineBORDER_REPLICATE4.3 Adaptive Binarization and Shadow RemovalDocuments scanned from bound books often exhibit "Spine Shadow"—a darkening curve near the center fold. Global thresholding (like Otsu's method) fails here, treating the shadow as black ink.The solution implements Adaptive Gaussian Thresholding. By calculating the threshold for a pixel based on the weighted average of its $11 \times 11$ neighborhood (minus a constant $C=2$), the algorithm successfully separates text from the background regardless of local lighting gradients. This ensures that text inside the shadow remains legible to the OCR engine.5. Engineering the Hybrid Engine: Code Refactoring & InfrastructureIntegrating the heavy computational stack of Computer Vision (OpenCV, PaddlePaddle) into the existing lightweight script requires careful resource management, particularly regarding GPU contention.5.1 The "CUDA Cold War": PyTorch vs. PaddlePaddleA significant engineering risk identified in the research snippets is the conflict between PyTorch (used by ingest_pro_books for the BAAI/bge-m3 embedding model) and PaddlePaddle (used by the new OCR module).The Conflict: Both frameworks attempt to initialize a CUDA context and reserve a large contiguous block of VRAM upon launch. If ingest_pro_books loads the embedding model first, PaddleOCR may fail to launch due to CUDA_ERROR_OUT_OF_MEMORY. Conversely, concurrent contexts can lead to unpredictable segmentation faults due to memory fragmentation.The Resolution Strategy: The refactoring implements a Resource Isolation Policy.OCR Offloading: The PaddleOCR engine is strictly configured to run in CPU Mode (). While this increases per-page processing time, it guarantees that the GPU remains exclusively available for the high-dimensional vectorization tasks of . Given that ingestion is a batch process, system stability is prioritized over raw throughput.use_gpu=FalseBAAI/bge-m3Dependency Soft-Loading: The new dependencies (cv2, paddleocr) are imported within try-except blocks. This ensures that the script degrades gracefully—falling back to the original digital-only mode—if the CV libraries are not present in the environment.5.2 The  ImplementationContentFidelityRouterThe core architectural change in  is the introduction of a fidelity check. Instead of blindly passing every PDF to , the system now performs a density audit.process_filefitzRefactored Logic Flow:Ingest: Open PDF with .fitzAudit: Extract text from the first 3 pages. Calculate .Average Characters Per Page (ACPP)Decision:If ACPP > 50: Classify as Digital PDF. Route to Legacy ._unsafe_parse_pdfIf ACPP < 50: Classify as Scanned PDF. Route to New .process_scanned_pdf_dual_trackNormalize: Both routes return a standardized list of content chunks, preserving the source, is_vip, and type metadata keys expected by the run loop.6. Detailed Implementation ModulesThis section provides the comprehensive code logic for the new modules, ensuring exact adherence to the functionalities described in the Scanned PDF Data Processing & Storage report.6.1 Module 1:  (The Vision Stack)ImageProcessorThis static utility class encapsulates the OpenCV transformations. It is stateless, ensuring thread safety if the ingestion is parallelized in the future.Pythonclass ImageProcessor:
+    """
+    Implements Image Preprocessing & Enhancement from.
+    Handles Deskewing, Rasterization, and Adaptive Binarization.
+    """
+    @staticmethod
+    def deskew(image):
+        """
+        Applies Minimum Area Rectangle deskewing.
+        Source:  Chapter 2.2
+        """
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cv2.bitwise_not(gray) # Invert: Text becomes white
+            
+            # Expansion: Dilation to connect text characters
+            thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+            coords = np.column_stack(np.where(thresh > 0))
+            
+            if coords.size == 0: return image # Handle blank pages
+            
+            # Calculate angle
+            angle = cv2.minAreaRect(coords)[-1]
+            if angle < -45: angle = -(90 + angle)
+            else: angle = -angle
+            
+            # Safety Clamp: Only correct if skew is significant but not absurd
+            if abs(angle) > 5 or abs(angle) < 0.1: return image
+            
+            (h, w) = image.shape[:2]
+            center = (w // 2, h // 2)
+            M = cv2.getRotationMatrix2D(center, angle, 1.0)
+            
+            # BORDER_REPLICATE is critical to avoid OCR artifacts at edges
+            return cv2.warpAffine(image, M, (w, h), 
+                                flags=cv2.INTER_CUBIC, 
+                                borderMode=cv2.BORDER_REPLICATE)
+        except Exception as e:
+            print(f"Deskew Warning: {e}")
+            return image
+
+    @staticmethod
+    def enhance_contrast(image):
+        """
+        Applies Adaptive Gaussian Thresholding for shadow removal.
+        Source:  Chapter 2.3
+        """
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            # Denoise first to prevent grain amplification
+            gray = cv2.fastNlMeansDenoising(gray, h=3)
+            # Block size 11, C=2 empirically derived for book scans
+            binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                         cv2.THRESH_BINARY, 11, 2)
+            return cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
+        except Exception:
+            return image
+6.2 Module 2:  (The Intelligence Stack)DualTrackExtractorThis class manages the VLM and OCR interactions. It introduces the  dependency, which is injected via the  initialization.openai_api_keyKnowledgeIngesterKey Innovation: The VLM Prompt StrategyThe report  specifies that generic prompts fail on complex technical diagrams. The refactored code implements context-aware prompting:Table Mode: "Convert this image table into Markdown format. Preserve structure."Figure Mode: "Analyze this chart. Extract data trends and summary."Pythonclass DualTrackExtractor:
+    """
+    Implements Track A (Structure) & Track B (Semantics).
+    Source:  Chapter 3 & 4
+    """
+    def __init__(self, openai_key=None):
+        # Force CPU for Paddle to avoid CUDA OOM with BGE-M3
+        self.layout_engine = PPStructure(show_log=False, image_orientation=True, use_gpu=False)
+        self.vlm_client = OpenAI(api_key=openai_key) if openai_key else None
+
+    def process_page(self, image_np):
+        # 1. Preprocessing
+        clean_img = ImageProcessor.deskew(image_np)
+        clean_img = ImageProcessor.enhance_contrast(clean_img)
+        
+        # 2. Layout Analysis (Track A)
+        try:
+            results = self.layout_engine(clean_img)
+        except Exception:
+            return
+
+        extracted_data =
+        # Sort by Y-coordinate for reading order
+        results.sort(key=lambda x: x['bbox'])
+
+        for region in results:
+            r_type = region['type']
+            bbox = region['bbox']
+            
+            # Filter Noise 
+            if r_type in ['header', 'footer']: continue
+            
+            content = ""
+            # Track A: Text Extraction
+            if r_type in ['text', 'title']:
+                if 'res' in region:
+                    content = " ".join([line['text'] for line in region['res']])
+            
+            # Track B: Visual Semantics
+            elif r_type in ['figure', 'table'] and self.vlm_client:
+                content = self._analyze_visual(region['img'], r_type)
+            
+            if content:
+                extracted_data.append({
+                    "content": content,
+                    "bbox": bbox,
+                    "type": r_type
+                })
+        return extracted_data
+
+    def _analyze_visual(self, img_crop, v_type):
+        # Base64 encoding for VLM
+        _, buffer = cv2.imencode('.jpg', img_crop)
+        b64_img = base64.b64encode(buffer).decode('utf-8')
+        
+        prompt = "Convert to Markdown." if v_type == 'table' else "Summarize trends."
+        
+        try:
+            response = self.vlm_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{
+                    "role": "user", 
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}}
+                    ]
+                }],
+                max_tokens=500
+            )
+            return f"[{v_type.upper()}]: {response.choices.message.content}"
+        except:
+            return ""
+6.3 Module 3:  IntegrationKnowledgeIngesterThe  is modified to host the . Crucially, we preserve the  and  methods verbatim to satisfy the "original functionality" constraint.KnowledgeIngesterContentFidelityRouter_check_and_sanitize_dbperform_backupRefactoring Highlights:Initialization: The  method now checks for  to initialize the .__init__OPENAI_API_KEYDualTrackExtractorScanned Pipeline: A new method  implements the generator pattern for , ensuring strict memory ceilings._process_scanned_pdfpdf2imagePython    def _detect_is_scanned(self, pdf_path):
+        """
+        Heuristic: If first 3 pages average < 50 chars, treat as scanned.
+        """
+        try:
+            doc = fitz.open(pdf_path)
+            total_text = 0
+            check_pages = min(3, len(doc))
+            for i in range(check_pages):
+                total_text += len(doc[i].get_text())
+            doc.close()
+            return (total_text / check_pages) < 50 if check_pages > 0 else True
+        except:
+            return False # Fail open to digital processing
+7. Data Persistence and Schema PreservationThe user strictly requires that the "generated database file does not change." This implies that the database schema (Collections, Embeddings, Metadata keys) must remain compatible with the ai_editor_core inference engine.7.1 Metadata Injection StrategyThe legacy system writes metadata with keys: source, is_vip, type. The new system generates additional rich metadata (bbox, original_type). To preserve schema compatibility while storing this new data:Primary Keys: The core keys (, ) are populated exactly as before.sourceis_vipType Overloading: The  key is utilized to signal the nature of the chunk.typeLegacy: , .pdf_stdtext_docNew: , .pdf_scanned_textpdf_scanned_figureJSON 序列化：新的复杂元数据（边界框）被序列化成 JSON 字符串，并存储在新的元数据字段中。由于 ChromaDB 允许任意元数据键值对，添加字段不会破坏未请求字段的现有查询，满足“文件不变”的要求（可读性和可用性），同时增加了请求的功能。bboxbbox7.2 数据库不变量重构环确保：run集合命名：仍然源自 ，确保扫描的“UE5”文档归入 。kb_categoryget_routing_categorydirector_expert嵌入模型：仍是唯一的编码器。BAAI/bge-m3批次处理：BATCH_SIZE = 10 和 COOL_DOWN = 0.5 节流会应用于新扫描的区块，防止 SQLite 数据库中的写锁定争用。8. 运营风险与缓解措施8.1 内存泄漏管理外部研究表明 PaddleOCR 在迭代运行 Python 时已知内存泄漏。缓解措施：该方法在每次页面迭代后显式调用并删除中间数组。process_scanned_pdfgc.collect()img_np隔离：通过强制use_gpu=False，我们避免了“僵尸显存”问题，即Paddle分配GPU内存却从未释放，最终会导致同一GPU上的BGE-M3型号崩溃。8.2 性能影响向双轨处理的转变显著增加了摄取延迟。数字PDF：每页~0.1秒。扫描PDF（CPU）每页约2-5秒。扫描PDF（VLM）：每个图形约5-10秒（网络延迟）。作指导：该脚本被设计为离线/后台批处理处理器。考虑到提取数据的价值，这种延迟是可以接受的。脚本的进度条现在会反映扫描文件处理速度较慢的情况。ingest_pro_bookstqdm9. 结论本报告中详细的建筑重建成功满足所有用户需求。它将扫描PDF数据处理与存储研究的先进计算机视觉能力——包括Deskewing、自适应二元化和VLM语义提取——整合进了该流程。通过实施并严格遵守资源隔离策略，系统保持了与遗留数据库模式和防御机制的100%向后兼容。这使引擎从一个文本有限的解析器转变为一个强大、多模态的知识摄取系统，能够解锁被扫描档案中困住的“黑暗数据”。ingest_pro_booksContentFidelityRouter

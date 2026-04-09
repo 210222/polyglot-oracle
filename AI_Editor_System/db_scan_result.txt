@@ -1,0 +1,38 @@
+集合总数: 8
+[axiom_rules_zh] 0 片
+[axiom_rules_en] 0 片
+[director_expert_zh] 2794 片
+  电影语言的语法（插图修订版） (丹尼艾尔·阿里洪(Daniel Arijon)) (Z-Library) x748
+  从构思到银幕电影镜头设计 (（美）史蒂文·卡茨著) (Z-Library) x727
+  眨眼之间 电影剪辑的奥秘（第2版） (沃尔特·默奇) (z-library.sk, 1lib.sk, z-lib.sk) x680
+  色彩与光线写实主义绘画指南 (詹姆斯·格尔尼,James Gurney) (Z-Library) x390
+  大师镜头（第一卷）：低成本拍大片的100个高级技巧（第2版） (肯沃斯 (Christophe... (z-library.sk, 1lib x247
+  视觉美学与世界观设定.txt x2
+[shared_common_zh] 0 片
+[shared_common_en] 0 片
+[screenplay_expert_zh] 1603 片
+  故事的解剖 跟好萊塢編劇教父學習說故事的技藝, 打造獨一無二的內容、結構與風格.pdf x448
+  故事：材质、结构、风格和银幕剧作的原理(编剧圣经，畅销全球20年)(果麦经典) (罗伯特∙麦基) (Z-Library).txt x407
+  對白的解剖 (二版)  跟好萊塢編劇教父學習角色說話的藝術, 在已說、未說、不可說之間, 強化... (Z-Library).pdf x322
+  编剧心理学 在剧本中建构冲突 ([美]威廉·尹迪克(William Indick)) (Z-Library).txt x251
+  救猫咪：电影编剧宝典 (（美）斯奈德著) (Z-Library).txt x175
+[director_expert_en] 3972 片
+  Set Lighting Technicians Handbook,  Film Lighti... (Z-Library) x792
+  Framed_Ink_2 x682
+  The invisible cut how editors make movie magic... (Z-Library) x679
+  The Visual Story Creating the Visual Structure... (Z-Library) x560
+  Light ― Science  Magic An Introduction to Photo... (Z-Library) x501
+  Virtual Production Field Guide Volume x236
+  Digital Cinematography. (Paul Wheeler) (z-library.sk, 1lib.sk, z-lib.s x226
+  vp-field-guide x154
+  Framed Ink (Mateu-Mestre Marcos.) (z-library.sk, 1lib.sk, z-lib.sk) x137
+  Midjourney.csv x5
+[screenplay_expert_en] 1079 片
+  Creating Unforgettable Characters (Seger Linda) (Z-Library).txt x573
+  The Hero with a Thousand Faces (The Collected W... (z-library.sk, 1lib x422
+  train_data.csv x50
+  Screenplay_Ultimate_Guide.txt x29
+  Knowledge_Capsule_Save_The_Cat.md x2
+  Knowledge_Capsule_Story_McKee.md x1
+  Knowledge_Capsule_Character_Arc.md x1
+  Knowledge_Capsule_Dialogue.md x1

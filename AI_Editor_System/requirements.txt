@@ -1,0 +1,17 @@
+# Web UI
+streamlit>=1.32.0
+
+# LLM / API
+openai>=1.14.0
+python-dotenv>=1.0.1
+
+# Vector Database
+chromadb>=0.4.24
+sentence-transformers>=2.6.0
+
+# PDF Processing (ingest_engine)
+PyMuPDF>=1.23.0
+Pillow>=10.0.0
+
+# Data
+pandas>=2.0.0
