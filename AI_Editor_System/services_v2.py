@@ -52,12 +52,12 @@ class ServiceConfig:
     openai_model: str = "gpt-4o"
     openai_timeout: float = 90.0
 
-    # --- OpenAI Standard 兼容接口 (DeepSeek / 智谱 / 任意代理) ---
+    # --- OpenAI Standard 兼容接口 (DeepSeek / 智谱 GLM / 任意代理) ---
     openai_std_base_url: str = field(
-        default_factory=lambda: os.getenv("OPENAI_STD_BASE_URL", "https://api.deepseek.com/v1")
+        default_factory=lambda: os.getenv("OPENAI_STD_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
     )
     openai_std_model: str = field(
-        default_factory=lambda: os.getenv("OPENAI_STD_MODEL", "deepseek-chat")
+        default_factory=lambda: os.getenv("OPENAI_STD_MODEL", "glm-4-flash")
     )
     openai_std_timeout: float = 90.0
     openai_std_retries: int = 2
@@ -403,15 +403,15 @@ class LLMGateway:
 
         coze_key = os.getenv("COZE_API_KEY")
         coze_bot = os.getenv("COZE_BOT_ID")
-        std_key  = os.getenv("OPENAI_STD_API_KEY")   # DeepSeek / 智谱 / 任意兼容接口
+        std_key  = os.getenv("OPENAI_STD_API_KEY") or os.getenv("ZHIPU_API_KEY")  # GLM / DeepSeek / 任意兼容接口
         oai_key  = os.getenv("OPENAI_API_KEY")
 
-        if coze_key and coze_bot:
+        if std_key:
+            self._provider = OpenAIStandardProvider(std_key, cfg)
+            self.mode = "GLM"
+        elif coze_key and coze_bot:
             self._provider = CozeProvider(coze_key, coze_bot, cfg)
             self.mode = "COZE"
-        elif std_key:
-            self._provider = OpenAIStandardProvider(std_key, cfg)
-            self.mode = "OPENAI_STD"
         elif oai_key:
             self._provider = OpenAIProvider(oai_key, cfg)
             self.mode = "OPENAI"
